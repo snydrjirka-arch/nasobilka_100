@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Násobilka na čas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f5f0;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    min-height: 100%;
+    user-select: none;
+  }
+  #app {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(1rem, 3vw, 2rem);
+    gap: clamp(0.7rem, 2vw, 1.25rem);
+  }
+  .header { text-align: center; padding-top: 0.25rem; }
+  .header h1 { font-size: clamp(20px, 4vw, 32px); font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+  .header p { font-size: clamp(12px, 2vw, 16px); color: #888; }
+
+  .top-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: clamp(6px, 1.5vw, 14px); }
+  .stat-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: clamp(0.5rem, 2vw, 1.1rem) 0.5rem;
+    text-align: center;
+    border: 1px solid #e8e8e8;
+  }
+  .stat-label { font-size: clamp(10px, 1.5vw, 14px); color: #999; margin-bottom: 4px; }
+  .stat-value { font-size: clamp(20px, 4vw, 36px); font-weight: 600; color: #1a1a1a; font-variant-numeric: tabular-nums; }
+  .stat-value.timer-val { color: #1a6fb5; }
+  .stat-value.wrong-val { color: #c0392b; }
+
+  .progress-bar-wrap { background: #e8e8e8; border-radius: 99px; height: clamp(4px, 0.8vw, 7px); overflow: hidden; flex-shrink: 0; }
+  .progress-bar { height: 100%; border-radius: 99px; background: #378ADD; transition: width 0.25s; }
+
+  .question-card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: clamp(1rem, 3vw, 2.5rem) clamp(1rem, 4vw, 3rem);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.4rem, 1.5vw, 1rem);
+  }
+  .question-num { font-size: clamp(11px, 1.8vw, 16px); color: #bbb; }
+  .question-text { font-size: clamp(42px, 10vw, 88px); font-weight: 600; letter-spacing: -2px; color: #1a1a1a; line-height: 1; }
+  .question-text .op { color: #aaa; font-weight: 400; }
+
+  .answer-display {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: clamp(100px, 22vw, 180px);
+    height: clamp(52px, 10vw, 88px);
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: clamp(28px, 6vw, 54px);
+    font-weight: 600;
+    color: #1a1a1a;
+    background: #f8f8f6;
+    transition: border-color 0.12s, background 0.12s;
+    font-variant-numeric: tabular-nums;
+  }
+  .answer-display.has-val { border-color: #378ADD; }
+  .answer-display.ok  { border-color: #1D9E75 !important; background: #eafaf4; color: #085041; }
+  .answer-display.err { border-color: #c0392b !important; background: #fdf0ee; color: #712B13; }
+  .answer-placeholder { color: #ccc; font-size: clamp(20px, 4vw, 36px); font-weight: 400; }
+
+  .feedback { min-height: clamp(18px, 3vw, 26px); font-size: clamp(13px, 2.2vw, 18px); font-weight: 600; }
+  .feedback.correct { color: #1D9E75; }
+  .feedback.wrong   { color: #c0392b; }
+
+  .keypad {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: clamp(0.6rem, 1.5vw, 1.25rem);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(6px, 1.2vw, 12px);
+    flex-shrink: 0;
+  }
+  .key {
+    height: clamp(56px, 10vw, 90px);
+    border-radius: 10px;
+    border: 1px solid #e8e8e8;
+    background: #f8f8f6;
+    font-size: clamp(22px, 4vw, 38px);
+    font-weight: 600;
+    color: #1a1a1a;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.08s, transform 0.08s;
+    touch-action: manipulation;
+  }
+  .key:active { background: #ececea; transform: scale(0.93); }
+  .key.key-del { font-size: clamp(18px, 3vw, 28px); color: #888; }
+  .key.key-ok {
+    background: #378ADD;
+    color: #fff;
+    border-color: #378ADD;
+    font-size: clamp(14px, 2.5vw, 22px);
+    font-weight: 600;
+  }
+  .key.key-ok:active { background: #185FA5; }
+  .key.key-ok.next-mode { background: #1D9E75; border-color: #1D9E75; }
+  .key.key-ok.next-mode:active { background: #0F6E56; }
+
+  .result-card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 3rem);
+    text-align: center;
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .result-emoji { font-size: clamp(40px, 8vw, 72px); margin-bottom: 0.5rem; }
+  .result-title { font-size: clamp(20px, 4vw, 34px); font-weight: 600; margin-bottom: 0.4rem; color: #1a1a1a; }
+  .result-sub { font-size: clamp(13px, 2vw, 17px); color: #888; margin-bottom: 1.25rem; }
+  .result-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(6px, 1.2vw, 12px); margin-bottom: 1.25rem; width: 100%; }
+  .metric-box { background: #f8f8f6; border-radius: 10px; padding: clamp(0.6rem, 1.5vw, 1.1rem); text-align: center; }
+  .metric-box .m-label { font-size: clamp(10px, 1.5vw, 14px); color: #999; margin-bottom: 4px; }
+  .metric-box .m-val { font-size: clamp(20px, 3.5vw, 30px); font-weight: 600; color: #1a1a1a; font-variant-numeric: tabular-nums; }
+  .metric-box .m-val.blue  { color: #1a6fb5; }
+  .metric-box .m-val.green { color: #1D9E75; }
+  .metric-box .m-val.red   { color: #c0392b; }
+
+  .pb-wrap { margin-bottom: 1.25rem; width: 100%; }
+  .pb-label { font-size: clamp(11px, 1.5vw, 14px); color: #999; margin-bottom: 6px; text-align: left; }
+  .pb-row { display: flex; align-items: center; gap: 8px; }
+  .pb-bar-wrap { flex: 1; background: #e8e8e8; border-radius: 99px; height: 6px; }
+  .pb-bar { height: 6px; border-radius: 99px; background: #1D9E75; width: 100%; }
+  .best-tag { background: #eafaf4; color: #0F6E56; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+
+  .btn-restart {
+    width: 100%;
+    padding: clamp(0.75rem, 2vw, 1.1rem);
+    font-size: clamp(14px, 2.2vw, 18px);
+    font-weight: 600;
+    border-radius: 14px;
+    border: 1.5px solid #ddd;
+    background: transparent;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .btn-restart:hover { background: #f5f5f0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>Násobilka na čas</h1>
+    <p>30 příkladů · výsledky do 100</p>
+  </div>
+
+  <div class="top-row">
+    <div class="stat-card">
+      <div class="stat-label">Zbývá</div>
+      <div class="stat-value" id="stat-remaining">30</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Čas</div>
+      <div class="stat-value timer-val" id="stat-timer">0.0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Chybně</div>
+      <div class="stat-value wrong-val" id="stat-wrong">0</div>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+  </div>
+
+  <div class="question-card" id="question-card">
+    <div class="question-num" id="question-num">Příklad 1 / 30</div>
+    <div class="question-text">
+      <span id="q-a">?</span><span class="op"> × </span><span id="q-b">?</span><span class="op"> = </span>
+    </div>
+    <div class="answer-display" id="answer-display">
+      <span class="answer-placeholder" id="answer-placeholder">?</span>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <div class="key" data-val="7">7</div>
+    <div class="key" data-val="8">8</div>
+    <div class="key" data-val="9">9</div>
+    <div class="key" data-val="4">4</div>
+    <div class="key" data-val="5">5</div>
+    <div class="key" data-val="6">6</div>
+    <div class="key" data-val="1">1</div>
+    <div class="key" data-val="2">2</div>
+    <div class="key" data-val="3">3</div>
+    <div class="key key-del" data-val="del">⌫</div>
+    <div class="key" data-val="0">0</div>
+    <div class="key key-ok" id="key-ok" data-val="ok">OK</div>
+  </div>
+
+  <div class="result-card" id="result-card">
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-title" id="result-title">Výborně!</div>
+    <div class="result-sub" id="result-sub"></div>
+    <div class="result-metrics">
+      <div class="metric-box"><div class="m-label">Celkový čas</div><div class="m-val blue" id="res-time">—</div></div>
+      <div class="metric-box"><div class="m-label">Průměr / příklad</div><div class="m-val blue" id="res-avg">—</div></div>
+      <div class="metric-box"><div class="m-label">Správně</div><div class="m-val green" id="res-correct">—</div></div>
+      <div class="metric-box"><div class="m-label">Chybně</div><div class="m-val red" id="res-wrong">—</div></div>
+    </div>
+    <div id="pb-section"></div>
+    <button class="btn-restart" id="btn-restart">Zkusit znovu</button>
+  </div>
+</div>
+
+<script>
+const TOTAL=30;
+let questions=[],current=0,correct=0,wrong=0;
+let timerInterval=null,startTime=null,elapsed=0;
+let answered=false,timerStarted=false;
+let bestTime=null,inputVal='';
+
+function genQuestions(){
+  const qs=[];
+  while(qs.length<TOTAL){
+    const a=Math.floor(Math.random()*10)+1;
+    const b=Math.floor(Math.random()*10)+1;
+    if(a*b<=100) qs.push({a,b,answer:a*b});
+  }
+  return qs;
+}
+
+function startTimer(){
+  if(timerStarted) return;
+  timerStarted=true; startTime=Date.now();
+  timerInterval=setInterval(()=>{
+    elapsed=(Date.now()-startTime)/1000;
+    document.getElementById('stat-timer').textContent=elapsed.toFixed(1);
+  },100);
+}
+
+function stopTimer(){ clearInterval(timerInterval); elapsed=(Date.now()-startTime)/1000; }
+
+function updateDisplay(){
+  const disp=document.getElementById('answer-display');
+  const ph=document.getElementById('answer-placeholder');
+  let nt=disp.querySelector('.num-text');
+  if(!nt){nt=document.createElement('span');nt.className='num-text';disp.appendChild(nt);}
+  if(inputVal===''){ph.style.display='';nt.style.display='none';disp.className='answer-display';}
+  else{ph.style.display='none';nt.style.display='';nt.textContent=inputVal;disp.className='answer-display has-val';}
+}
+
+function pressKey(val){
+  if(answered){if(val==='ok') nextQuestion(); return;}
+  if(val==='del'){inputVal=inputVal.slice(0,-1);updateDisplay();return;}
+  if(val==='ok'){submitAnswer();return;}
+  if(inputVal.length>=3) return;
+  const next=inputVal+val;
+  if(parseInt(next,10)>100) return;
+  inputVal=next; updateDisplay();
+}
+
+function submitAnswer(){
+  if(inputVal==='') return;
+  if(!timerStarted) startTimer();
+  answered=true;
+  const q=questions[current],val=parseInt(inputVal,10);
+  const disp=document.getElementById('answer-display');
+  const fb=document.getElementById('feedback');
+  const okBtn=document.getElementById('key-ok');
+  if(val===q.answer){
+    correct++;
+    disp.className='answer-display ok';
+    fb.textContent='Správně ✓'; fb.className='feedback correct';
+    okBtn.textContent='Další →'; okBtn.classList.add('next-mode');
+    setTimeout(nextQuestion,600);
+  } else {
+    wrong++;
+    document.getElementById('stat-wrong').textContent=wrong;
+    disp.className='answer-display err';
+    fb.textContent='Správný výsledek: '+q.answer; fb.className='feedback wrong';
+    okBtn.textContent='Další →'; okBtn.classList.add('next-mode');
+    setTimeout(nextQuestion,1100);
+  }
+}
+
+function nextQuestion(){current++;if(current>=TOTAL){showResult();return;}showQuestion();}
+
+function showQuestion(){
+  const q=questions[current];
+  inputVal=''; answered=false;
+  document.getElementById('question-num').textContent='Příklad '+(current+1)+' / '+TOTAL;
+  document.getElementById('q-a').textContent=q.a;
+  document.getElementById('q-b').textContent=q.b;
+  document.getElementById('stat-remaining').textContent=TOTAL-current;
+  document.getElementById('progress-bar').style.width=(current/TOTAL*100)+'%';
+  document.getElementById('feedback').textContent='';
+  document.getElementById('feedback').className='feedback';
+  const okBtn=document.getElementById('key-ok');
+  okBtn.textContent='OK'; okBtn.classList.remove('next-mode');
+  updateDisplay();
+}
+
+function fmtTime(s){
+  if(s>=60){const m=Math.floor(s/60);const sec=(s%60).toFixed(1);return m+':'+sec.padStart(4,'0')+' min';}
+  return s.toFixed(1)+' s';
+}
+
+function showResult(){
+  stopTimer();
+  document.getElementById('progress-bar').style.width='100%';
+  document.getElementById('question-card').style.display='none';
+  document.getElementById('keypad').style.display='none';
+  const rc=document.getElementById('result-card');
+  rc.style.display='flex';
+  const pct=correct/TOTAL;
+  let emoji='💪',title='Nevzdávej to!';
+  if(pct===1){emoji='🏆';title='Perfektní skóre!';}
+  else if(pct>=0.9){emoji='🎉';title='Výborně!';}
+  else if(pct>=0.7){emoji='👍';title='Dobrá práce!';}
+  else if(pct>=0.5){emoji='📚';title='Ještě procvičit!';}
+  document.getElementById('result-emoji').textContent=emoji;
+  document.getElementById('result-title').textContent=title;
+  document.getElementById('res-time').textContent=fmtTime(elapsed);
+  document.getElementById('res-avg').textContent=(elapsed/TOTAL).toFixed(2)+' s';
+  document.getElementById('res-correct').textContent=correct+' / '+TOTAL;
+  document.getElementById('res-wrong').textContent=wrong;
+  document.getElementById('result-sub').textContent='Dokončeno za '+fmtTime(elapsed);
+  const isNewBest=timerStarted&&(bestTime===null||elapsed<bestTime);
+  if(isNewBest) bestTime=elapsed;
+  let pbHtml='';
+  if(bestTime!==null){
+    pbHtml='<div class="pb-wrap"><div class="pb-label">Osobní rekord</div><div class="pb-row">';
+    pbHtml+='<span style="font-size:13px;color:#999;min-width:70px">Nejlepší čas</span>';
+    pbHtml+='<div class="pb-bar-wrap"><div class="pb-bar"></div></div>';
+    pbHtml+='<span style="font-size:13px;font-weight:600;min-width:60px;text-align:right;color:#1D9E75">'+fmtTime(bestTime)+'</span>';
+    if(isNewBest) pbHtml+='<span class="best-tag">Nový!</span>';
+    pbHtml+='</div></div>';
+  }
+  document.getElementById('pb-section').innerHTML=pbHtml;
+}
+
+function init(){
+  questions=genQuestions();
+  current=0;correct=0;wrong=0;timerStarted=false;elapsed=0;inputVal='';
+  clearInterval(timerInterval);
+  document.getElementById('stat-remaining').textContent=TOTAL;
+  document.getElementById('stat-timer').textContent='0.0';
+  document.getElementById('stat-wrong').textContent='0';
+  document.getElementById('progress-bar').style.width='0%';
+  document.getElementById('question-card').style.display='flex';
+  document.getElementById('keypad').style.display='grid';
+  document.getElementById('result-card').style.display='none';
+  showQuestion();
+}
+
+document.getElementById('keypad').addEventListener('click',e=>{
+  const key=e.target.closest('.key');
+  if(key) pressKey(key.dataset.val);
+});
+document.getElementById('btn-restart').addEventListener('click',init);
+document.addEventListener('keydown',e=>{
+  if(e.key>='0'&&e.key<='9') pressKey(e.key);
+  else if(e.key==='Backspace') pressKey('del');
+  else if(e.key==='Enter') pressKey('ok');
+});
+
+init();
+</script>
+</body>
+</html>
