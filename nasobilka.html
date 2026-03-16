@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Násobilka na čas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f5f0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem 0 3rem;
+  }
+  #app {
+    max-width: 380px;
+    width: 100%;
+    padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+  .header { text-align: center; padding-top: 0.5rem; }
+  .header h1 { font-size: 22px; font-weight: 600; color: #1a1a1a; margin-bottom: 3px; }
+  .header p { font-size: 13px; color: #888; }
+
+  .top-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .stat-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 0.65rem 0.5rem;
+    text-align: center;
+    border: 1px solid #e8e8e8;
+  }
+  .stat-label { font-size: 11px; color: #999; margin-bottom: 3px; }
+  .stat-value { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+  .stat-value.timer-val { color: #1a6fb5; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat-value.wrong-val { color: #c0392b; }
+
+  .progress-bar-wrap { background: #e8e8e8; border-radius: 99px; height: 5px; overflow: hidden; }
+  .progress-bar { height: 5px; border-radius: 99px; background: #378ADD; transition: width 0.25s; }
+
+  .question-card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem 1.25rem;
+    text-align: center;
+  }
+  .question-num { font-size: 12px; color: #bbb; margin-bottom: 0.6rem; }
+  .question-text { font-size: 38px; font-weight: 600; letter-spacing: -1px; color: #1a1a1a; margin-bottom: 1.25rem; }
+  .question-text .op { color: #aaa; font-weight: 400; }
+
+  .answer-input {
+    width: 120px;
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 0.45rem;
+    background: #f8f8f6;
+    color: #1a1a1a;
+    outline: none;
+    transition: border-color 0.12s;
+    -webkit-appearance: none;
+  }
+  .answer-input:focus { border-color: #378ADD; }
+  .answer-input.ok  { border-color: #1D9E75 !important; background: #eafaf4; }
+  .answer-input.err { border-color: #c0392b !important; background: #fdf0ee; }
+
+  .feedback { min-height: 20px; margin-top: 0.6rem; font-size: 14px; font-weight: 600; }
+  .feedback.correct { color: #1D9E75; }
+  .feedback.wrong   { color: #c0392b; }
+
+  .btn-submit {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 14px;
+    border: none;
+    background: #378ADD;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-submit:active { transform: scale(0.98); background: #185FA5; }
+
+  .result-card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
+    text-align: center;
+    display: none;
+  }
+  .result-emoji { font-size: 44px; margin-bottom: 0.5rem; }
+  .result-title { font-size: 22px; font-weight: 600; margin-bottom: 0.4rem; color: #1a1a1a; }
+  .result-sub { font-size: 14px; color: #888; margin-bottom: 1.25rem; }
+
+  .result-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1.25rem; }
+  .metric-box { background: #f8f8f6; border-radius: 10px; padding: 0.75rem; text-align: center; }
+  .metric-box .m-label { font-size: 11px; color: #999; margin-bottom: 4px; }
+  .metric-box .m-val { font-size: 22px; font-weight: 600; color: #1a1a1a; font-variant-numeric: tabular-nums; }
+  .metric-box .m-val.blue  { color: #1a6fb5; }
+  .metric-box .m-val.green { color: #1D9E75; }
+  .metric-box .m-val.red   { color: #c0392b; }
+
+  .pb-label { font-size: 12px; color: #999; margin-bottom: 6px; text-align: left; }
+  .pb-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .pb-bar-wrap { flex: 1; background: #e8e8e8; border-radius: 99px; height: 6px; }
+  .pb-bar { height: 6px; border-radius: 99px; }
+
+  .btn-restart {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 14px;
+    border: 1.5px solid #ddd;
+    background: transparent;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-restart:hover { background: #f5f5f0; }
+
+  .best-tag {
+    display: inline-block;
+    background: #eafaf4;
+    color: #0F6E56;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-left: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>Násobilka na čas</h1>
+    <p>30 příkladů · výsledky do 100</p>
+  </div>
+
+  <div class="top-row">
+    <div class="stat-card">
+      <div class="stat-label">Zbývá</div>
+      <div class="stat-value" id="stat-remaining">30</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Čas</div>
+      <div class="stat-value timer-val" id="stat-timer">0.0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Chybně</div>
+      <div class="stat-value wrong-val" id="stat-wrong">0</div>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+  </div>
+
+  <div class="question-card" id="question-card">
+    <div class="question-num" id="question-num">Příklad 1 / 30</div>
+    <div class="question-text">
+      <span id="q-a">?</span><span class="op"> × </span><span id="q-b">?</span><span class="op"> = </span>
+    </div>
+    <input type="number" class="answer-input" id="answer-input" placeholder="?" inputmode="numeric" min="1" max="100" />
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <button class="btn-submit" id="btn-submit">Potvrdit</button>
+
+  <div class="result-card" id="result-card">
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-title" id="result-title">Výborně!</div>
+    <div class="result-sub" id="result-sub"></div>
+    <div class="result-metrics">
+      <div class="metric-box">
+        <div class="m-label">Celkový čas</div>
+        <div class="m-val blue" id="res-time">—</div>
+      </div>
+      <div class="metric-box">
+        <div class="m-label">Průměr / příklad</div>
+        <div class="m-val blue" id="res-avg">—</div>
+      </div>
+      <div class="metric-box">
+        <div class="m-label">Správně</div>
+        <div class="m-val green" id="res-correct">—</div>
+      </div>
+      <div class="metric-box">
+        <div class="m-label">Chybně</div>
+        <div class="m-val red" id="res-wrong">—</div>
+      </div>
+    </div>
+    <div id="pb-section"></div>
+    <button class="btn-restart" id="btn-restart">Zkusit znovu</button>
+  </div>
+</div>
+
+<script>
+const TOTAL = 30;
+let questions = [], current = 0, correct = 0, wrong = 0;
+let timerInterval = null, startTime = null, elapsed = 0;
+let answered = false, timerStarted = false;
+let bestTime = null, bestCorrect = null;
+
+function genQuestions() {
+  const qs = [];
+  while (qs.length < TOTAL) {
+    const a = Math.floor(Math.random() * 10) + 1;
+    const b = Math.floor(Math.random() * 10) + 1;
+    if (a * b <= 100) qs.push({ a, b, answer: a * b });
+  }
+  return qs;
+}
+
+function startTimer() {
+  if (timerStarted) return;
+  timerStarted = true;
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    elapsed = (Date.now() - startTime) / 1000;
+    document.getElementById('stat-timer').textContent = elapsed.toFixed(1);
+  }, 100);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  elapsed = (Date.now() - startTime) / 1000;
+}
+
+function showQuestion() {
+  const q = questions[current];
+  document.getElementById('question-num').textContent = `Příklad ${current + 1} / ${TOTAL}`;
+  document.getElementById('q-a').textContent = q.a;
+  document.getElementById('q-b').textContent = q.b;
+  document.getElementById('stat-remaining').textContent = TOTAL - current;
+  document.getElementById('progress-bar').style.width = (current / TOTAL * 100) + '%';
+  const inp = document.getElementById('answer-input');
+  inp.value = '';
+  inp.className = 'answer-input';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('btn-submit').textContent = 'Potvrdit';
+  answered = false;
+  inp.focus();
+}
+
+function submitAnswer() {
+  if (answered) { nextQuestion(); return; }
+  const inp = document.getElementById('answer-input');
+  const val = parseInt(inp.value, 10);
+  if (isNaN(val) || inp.value.trim() === '') return;
+  if (!timerStarted) startTimer();
+  answered = true;
+  const q = questions[current];
+  const fb = document.getElementById('feedback');
+  if (val === q.answer) {
+    correct++;
+    inp.classList.add('ok');
+    fb.textContent = 'Správně ✓';
+    fb.className = 'feedback correct';
+    document.getElementById('btn-submit').textContent = 'Další →';
+    setTimeout(nextQuestion, 600);
+  } else {
+    wrong++;
+    document.getElementById('stat-wrong').textContent = wrong;
+    inp.classList.add('err');
+    fb.textContent = `Správný výsledek: ${q.answer}`;
+    fb.className = 'feedback wrong';
+    document.getElementById('btn-submit').textContent = 'Další →';
+    setTimeout(nextQuestion, 1100);
+  }
+}
+
+function nextQuestion() {
+  current++;
+  if (current >= TOTAL) { showResult(); return; }
+  document.getElementById('stat-remaining').textContent = TOTAL - current;
+  showQuestion();
+}
+
+function fmtTime(s) {
+  if (s >= 60) {
+    const m = Math.floor(s / 60);
+    const sec = (s % 60).toFixed(1);
+    return `${m}:${sec.padStart(4,'0')} min`;
+  }
+  return s.toFixed(1) + ' s';
+}
+
+function showResult() {
+  stopTimer();
+  document.getElementById('progress-bar').style.width = '100%';
+  document.getElementById('question-card').style.display = 'none';
+  document.getElementById('btn-submit').style.display = 'none';
+  const rc = document.getElementById('result-card');
+  rc.style.display = 'block';
+
+  const pct = correct / TOTAL;
+  let emoji = '💪', title = 'Nevzdávej to!';
+  if (pct === 1)      { emoji = '🏆'; title = 'Perfektní skóre!'; }
+  else if (pct >= 0.9){ emoji = '🎉'; title = 'Výborně!'; }
+  else if (pct >= 0.7){ emoji = '👍'; title = 'Dobrá práce!'; }
+  else if (pct >= 0.5){ emoji = '📚'; title = 'Ještě procvičit!'; }
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-title').textContent = title;
+
+  const avg = elapsed / TOTAL;
+  document.getElementById('res-time').textContent = fmtTime(elapsed);
+  document.getElementById('res-avg').textContent = avg.toFixed(2) + ' s';
+  document.getElementById('res-correct').textContent = correct + ' / ' + TOTAL;
+  document.getElementById('res-wrong').textContent = wrong;
+
+  const isNewBest = timerStarted && (bestTime === null || elapsed < bestTime);
+  if (isNewBest) { bestTime = elapsed; bestCorrect = correct; }
+
+  let pbHtml = '';
+  if (bestTime !== null) {
+    pbHtml += `<div class="pb-label">Osobní rekord</div>`;
+    pbHtml += `<div class="pb-row">`;
+    pbHtml += `<span style="font-size:12px;color:#999;min-width:70px">Nejlepší čas</span>`;
+    pbHtml += `<div class="pb-bar-wrap"><div class="pb-bar" style="width:100%;background:#1D9E75"></div></div>`;
+    pbHtml += `<span style="font-size:13px;font-weight:600;min-width:60px;text-align:right;color:#1D9E75">${fmtTime(bestTime)}</span>`;
+    if (isNewBest) pbHtml += `<span class="best-tag">Nový!</span>`;
+    pbHtml += `</div>`;
+  }
+  document.getElementById('pb-section').innerHTML = pbHtml;
+  document.getElementById('result-sub').textContent = `Dokončeno za ${fmtTime(elapsed)}`;
+}
+
+function init() {
+  questions = genQuestions();
+  current = 0; correct = 0; wrong = 0;
+  timerStarted = false; elapsed = 0;
+  clearInterval(timerInterval);
+  document.getElementById('stat-remaining').textContent = TOTAL;
+  document.getElementById('stat-timer').textContent = '0.0';
+  document.getElementById('stat-wrong').textContent = '0';
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('question-card').style.display = 'block';
+  document.getElementById('btn-submit').style.display = 'block';
+  document.getElementById('result-card').style.display = 'none';
+  showQuestion();
+}
+
+document.getElementById('btn-submit').addEventListener('click', submitAnswer);
+document.getElementById('btn-restart').addEventListener('click', init);
+document.getElementById('answer-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+
+init();
+</script>
+</body>
+</html>
